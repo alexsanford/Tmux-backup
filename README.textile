@@ -1,0 +1,1 @@
+See "the original article":http://brainscraps.wikia.com/wiki/Resurrecting_tmux_Sessions_After_Reboot
