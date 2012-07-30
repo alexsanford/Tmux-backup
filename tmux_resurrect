@@ -9,15 +9,16 @@ usage() {
 #######################
 # Config Variables
 max_backups=12
-ignore_session_list="hosts"
+ignore_session_list=""
 backup_dir=~/.resurrect/tmux_snapshot
 export PATH="${PATH}:/usr/local/bin"
 
 #######################
 # Use prompt to get state of pane.
 mimic_state() {
-   prompt='^\<.*@.*:'
-   prompt_line=$(grep $(eval echo ${prompt}) ${backup_dir}/${pane_full} | tail -n 1)
+   user=alex
+   prompt_regex="^${user}.*@.*:"
+   prompt_line=$(grep $(echo ${prompt_regex}) ${backup_dir}/${pane_full} | tail -n 1 | sed 's/ \[git:.*$//')
    host=$(printf "${prompt_line}" | cut -d@ -f2 | cut -d: -f1)
    working_dir=$(printf "${prompt_line}" | cut -d: -f2 | cut -d\> -f1)
 
@@ -87,7 +88,10 @@ if [ "${task}" = 'backup' ] ;then
     done
     session_size=$(tmux list-sessions | awk -F'[' '/^'${session}': / {print $2}' | awk -F']' '{print $1}')
     echo "${session_size}" >${backup_dir}/${session}.size
-    for window in $(tmux list-windows -t ${session} | awk -F: '{print $1}') ;do
+    tmux list-windows -t ${session} | sed 's/^\([^:]*\): \(.*\) \[[0-9]*x[0-9]*\].*$/\1:\2/' | while read window_with_name;do
+      window=$(echo ${window_with_name} | awk -F: '{print $1}')
+      window_name=$(echo ${window_with_name} | awk -F: '{print $2}')
+      echo "${window_name}" >${backup_dir}/${session}:${window}-name
       for pane in $(tmux list-panes -t ${session}:${window} | awk -F: '{print $1}') ;do
         ##backup pane layout
         if [ ${pane} -gt 0 ] ;then
@@ -187,6 +191,16 @@ elif [ "${task}" = 'restore' ] ;then
         tmux send-keys -t ${pane_full} "grep -v -e 'strings you dont want to see' -e 'another string you dont want to see' ${backup_dir}/${pane_full} | cat -s
 " #carriage return from previous line
         mimic_state
+      fi
+    done
+
+    ##re-name the windows to reflect backed-up window names
+    echo "* Re-naming windows to original names:"
+    for window in ${window_list_rev} ;do
+      name=`cat ${backup_dir}/${session}:${window}-name`
+      if [ "${name}" != "${window}" ] ;then
+        echo "${session}:${window} -> ${session}:${name}"
+        tmux rename-window -t ${session}:${window} "${name}"
       fi
     done
   done
