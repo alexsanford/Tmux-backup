@@ -60,6 +60,12 @@ while [ ${1} ] ;do
 done
 
 if [ "${task}" = 'backup' ] ;then
+  ##Only if tmux is running
+  if ! tmux list-sessions &>/dev/null
+  then
+    exit
+  fi
+
   ##Rotate previous backups.
   i=${max_backups}
   while [[ ${i} != 0 ]] ;do
