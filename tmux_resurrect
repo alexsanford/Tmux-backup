@@ -134,7 +134,7 @@ elif [ "${task}" = 'restore' ] ;then
 
   ##Restore proper number of sessions, windows, and panes
   for session in $(ls ${backup_dir} | grep -v '\.size$' | cut -d: -f1 | sort -du) ;do
-    window_list=$(ls ${backup_dir} | awk -F: '/^'${session}':/ {print $2}' | cut -d\. -f1 | sort -nu)
+    window_list=$(ls ${backup_dir} | awk -F: '/^'${session}':/ {print $2}' | sed 's/^\([0-9]*\).*/\1/' | sort -nu)
     window_list_rev=$(echo "${window_list}" | sort -nr)
     num_windows=$(echo ${window_list} | wc -w)
 
